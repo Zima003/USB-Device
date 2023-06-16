@@ -293,7 +293,7 @@ Return value:
         &deviceData,
         &if_guid /*&GUID_DEVINTERFACE_USB2USJG*/,
         0,
-        &interfaceData); // Добавить выбор интерфейса для этой функции на уровне выше
+        &interfaceData); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 
     if (FALSE == bResult) {
 
@@ -876,7 +876,7 @@ void Demo_SPI(WINUSB_INTERFACE_HANDLE hInterface) {
     }
 }
 
-void Demo_GPIO(WINUSB_INTERFACE_HANDLE hInterface) {
+void Write_GPIO(WINUSB_INTERFACE_HANDLE hInterface, ULONG ValueL, ULONG ValueH, ULONG IOL, ULONG IOH, ULONG DATA ) {
     BOOL bError, bResult;
     UINT8 SIUMode;
     WINUSB_PIPE_INFORMATION pipeO, pipeI;
@@ -892,9 +892,9 @@ void Demo_GPIO(WINUSB_INTERFACE_HANDLE hInterface) {
     if (!WinUsb_GetAssociatedInterface(hInterface, 0, &hDataInterface)) return;
 
     static const UINT8 szBuffer[] = {
-        0x86, 2, 0,
-        0x80, 0x00, 0xFF,
-        0x82, 0x05, 0x0F
+        0x86, ValueL, ValueH,
+        0x80, 0x00, IOL,
+        0x82, 0x05, IOH
     };
  
     UINT8 ToSJG[10], FromSJG[10];
@@ -913,7 +913,7 @@ void Demo_GPIO(WINUSB_INTERFACE_HANDLE hInterface) {
 
         _tprintf(_T("Wrote %d byte(s) to pipe %d.\nActual data transferred: %d.\n"), cbSize, pID, cbSent);
 
-        ToSJG[0] = 0x80; ToSJG[1] = 0xAA; ToSJG[2] = 0xFF;
+        ToSJG[0] = 0x80; ToSJG[1] = ; ToSJG[2] = 0xFF;
         ToSJG[3] = 0x82; ToSJG[4] = 0x09; ToSJG[5] = 0x00;
         ToSJG[6] = 0x81; ToSJG[7] = 0x83; ToSJG[8] = 0x87;
         while (true)
@@ -925,8 +925,54 @@ void Demo_GPIO(WINUSB_INTERFACE_HANDLE hInterface) {
     }
         
 }
+void Read_GPIO(WINUSB_INTERFACE_HANDLE hInterface, ULONG ValueL, ULONG ValueH, ULONG IOL, ULONG IOH) {
+    BOOL bError, bResult;
+    UINT8 SIUMode;
+    WINUSB_PIPE_INFORMATION pipeO, pipeI;
+    WINUSB_INTERFACE_HANDLE hDataInterface;
+    ULONG cbWritten;
 
-void test_SPI(WINUSB_INTERFACE_HANDLE hInterface)
+    SetSIUMode(hInterface, 0);
+    SetSIUMode(hInterface, 3);
+    if (GetSIUMode(hInterface, &SIUMode)) {
+        printf("Current SIU mode: %d \n", SIUMode);
+    }
+
+    if (!WinUsb_GetAssociatedInterface(hInterface, 0, &hDataInterface)) return;
+
+    static const UINT8 szBuffer[] = {
+        0x86, ValueL, ValueH,
+        0x80, 0x00, IOL,
+        0x82, 0x05, IOH
+    };
+ 
+    UINT8 ToSJG[10], FromSJG[10];
+
+    bResult = WinUsb_QueryPipe(hDataInterface, 0, 1, &pipeO);
+    bResult &= WinUsb_QueryPipe(hDataInterface, 0, 0, &pipeI);
+    if (bResult) {
+
+        ULONG cbSize = sizeof(szBuffer);
+        ULONG cbSent = 0;
+        UCHAR pID;
+
+        pID = pipeO.PipeId;
+        bResult = WinUsb_WritePipe(hDataInterface, pID, (PUCHAR)szBuffer, cbSize, &cbSent, 0);
+
+
+        _tprintf(_T("Wrote %d byte(s) to pipe %d.\nActual data transferred: %d.\n"), cbSize, pID, cbSent);
+
+        
+        while (true)
+        {
+            bResult = WinUsb_ReadPipe(hDataInterface, pipeO.PipeId, &FromSJG[0], 2, &cbSent, 0);
+            Sleep(200);
+            printf("Ok");
+        }
+    }
+        
+}
+void Write_SPI(WINUSB_INTERFACE_HANDLE hInterface, ULONG ValueL,ULONG ValueH, ULONG Period_quantityL, ULONG Period_quantityH, ULONG data )
 {
     BOOL bError, bResult;
     UINT8 SIUMode;
@@ -943,7 +989,7 @@ void test_SPI(WINUSB_INTERFACE_HANDLE hInterface)
     if (!WinUsb_GetAssociatedInterface(hInterface, 0, &hDataInterface)) return;
 
     static const UINT8 szBuffer[] = {
-    0x86, 2, 10, 
+    0x86, ValueL, ValueH, 
     };
 
     bResult = WinUsb_QueryPipe(hDataInterface, 0, 1, &pipeO);
@@ -959,7 +1005,7 @@ void test_SPI(WINUSB_INTERFACE_HANDLE hInterface)
     if (bResult)
     {
         uint8_t cmd_buf[] = { 
-        0x8f, 0xff, 0x00,
+        0x8f, Period_quantityL, Period_quantityH,
 
         /*Write_Command1(0x1),
         Write_Command1(0x2),
@@ -968,11 +1014,7 @@ void test_SPI(WINUSB_INTERFACE_HANDLE hInterface)
         Write_Command1(0x5),
         Write_Command1(0x6),
         Write_Command1(0x7),*/
-        Write_Command1(0x1),
-        Write_Command1(0x2),
-        Write_Command1(0x3),
-        Write_Command1(0x4),
-        Write_Command1(0x5),
+        Write_Command1(data),
 
        
 
@@ -989,8 +1031,55 @@ void test_SPI(WINUSB_INTERFACE_HANDLE hInterface)
         }
     }
 }
+void Read_SPI(WINUSB_INTERFACE_HANDLE hInterface, ULONG ValueL,ULONG ValueH, ULONG Period_quantityL, ULONG Period_quantityH)
+{
+    BOOL bError, bResult;
+    UINT8 SIUMode;
+    WINUSB_PIPE_INFORMATION pipeO, pipeI;
+    WINUSB_INTERFACE_HANDLE hDataInterface;
+    ULONG cbWritten;
 
-void Test_UART(WINUSB_INTERFACE_HANDLE hInterface, uint32_t DTERate, uint8_t  CharFormat, uint8_t  ParityType, uint8_t  DataBits, ULONG data)
+    SetSIUMode(hInterface, 0);
+    SetSIUMode(hInterface, 3);
+    if (GetSIUMode(hInterface, &SIUMode)) {
+        printf("Current SIU mode: %d \n", SIUMode);
+    }
+
+    if (!WinUsb_GetAssociatedInterface(hInterface, 0, &hDataInterface)) return;
+
+    static const UINT8 szBuffer[] = {
+    0x86, ValueL, ValueH, 
+    };
+
+    bResult = WinUsb_QueryPipe(hDataInterface, 0, 1, &pipeO);
+    bResult &= WinUsb_QueryPipe(hDataInterface, 0, 0, &pipeI);
+    _tprintf(_T("Input to pipe ID %d.\n"), pipeI.PipeId);
+    _tprintf(_T("Output to pipe ID %d.\n"), pipeO.PipeId);
+
+    ULONG cbSize = sizeof(szBuffer);
+    ULONG cbSent = 0;
+    ULONG cbRead = 0;
+
+    bResult = WinUsb_WritePipe(hDataInterface, pipeO.PipeId, (PUCHAR)szBuffer, cbSize, &cbSent, 0);
+    if (bResult)
+    {
+        uint8_t cmd_buf[] = { 
+        0x8f, Period_quantityL, Period_quantityH,
+        0x80, 0x38, 0x3b}; 
+        ULONG cmd_size = sizeof(cmd_buf);
+
+        uint8_t FromSPI[2];
+        ULONG read_size = sizeof(FromSPI);
+        while (true)
+        {
+            bResult = WinUsb_ReadPipe(hDataInterface, pipeO.PipeId, (PUCHAR)FromSPI, read_size, &cbSent, 0);
+            Sleep(200);
+            _tprintf(_T("Wrote %d byte(s) to pipe %d.\nActual data transferred: %d.\n___________"), cmd_size, pipeO.PipeId, cbSent);
+            
+        }
+    }
+}
+void Write_UART(WINUSB_INTERFACE_HANDLE hInterface, uint32_t DTERate, uint8_t  CharFormat, uint8_t  ParityType, uint8_t  DataBits, ULONG data)
 {
     BOOL bError, bResult = true;
     UINT8 SIUMode;
@@ -1023,7 +1112,7 @@ void Test_UART(WINUSB_INTERFACE_HANDLE hInterface, uint32_t DTERate, uint8_t  Ch
     printf("Enter Interface (0, 2): \n");
     scanf_s("%d", &(Interface));
 #endif
-    /// Настройки для UART не выставляются если книверсальный блок интерфейсов отключён
+    /// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ UART пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     //bResult = SetSIUMode(hInterface, SIU_INTERFACE_0, SET_INTERFACES_CONFIG_VALUE_DISABLE);
     if (bResult)
     {
@@ -1071,7 +1160,88 @@ void Test_UART(WINUSB_INTERFACE_HANDLE hInterface, uint32_t DTERate, uint8_t  Ch
         
     }
 }
+void Read_UART(WINUSB_INTERFACE_HANDLE hInterface, uint32_t DTERate, uint8_t  CharFormat, uint8_t  ParityType, uint8_t  DataBits, ULONG data)
+{
+    BOOL bError, bResult = true;
+    UINT8 SIUMode;
+    WINUSB_PIPE_INFORMATION pipeO, pipeI;
+    WINUSB_INTERFACE_HANDLE hDataInterface = nullptr;
+    ULONG cbWritten;
+    ULONG cbSent = 0;
+    LineCoding_s UartLineCoding;
+    UartLineCoding.DTERate = DTERate;
+    UartLineCoding.CharFormat = CharFormat;
+    UartLineCoding.ParityType = ParityType;
+    UartLineCoding.DataBits = DataBits;
 
+
+    SIUInterfaces_e Interface = SIU_INTERFACE_0;
+    
+#if 0
+    printf("Enter UART parameters: \n");
+    printf("Baudrate: \n");
+    scanf_s("%d", &(UartLineCoding.DTERate));
+    printf("Stop bits qty (0 - 1stop bit, 1 - 1.5 stop bit, 2 - 2 stop bits): \n");
+    scanf_s("%d", &(UartLineCoding.CharFormat));
+    printf("Parity type (0 - non parity bit, 1 - odd, 2 - even, 3 - mark, 4 - space): \n");
+    scanf_s("%d", &(UartLineCoding.ParityType));
+    printf("Data bits (5,6,7,8,16): \n");
+    scanf_s("%d", &(UartLineCoding.DataBits));
+#endif
+
+#if 0
+    printf("Enter Interface (0, 2): \n");
+    scanf_s("%d", &(Interface));
+#endif
+    /// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ UART пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    //bResult = SetSIUMode(hInterface, SIU_INTERFACE_0, SET_INTERFACES_CONFIG_VALUE_DISABLE);
+    if (bResult)
+    {
+        printf("\n OK");
+    }
+
+    bResult = SetSIUMode(hInterface, Interface, SET_INTERFACES_CONFIG_VALUE_UART);
+    if (GetSIUMode(hInterface, Interface, &SIUMode)) {
+        printf("Current SIU mode: %d \n", SIUMode);
+    }
+    PrintUartLineCoding(UartLineCoding);
+    bResult = SetUartLineCoding(hInterface, Interface, &UartLineCoding);
+    if (bResult)
+    {
+        printf("\n Set UART Line Coding OK");
+    }
+    memset(&UartLineCoding, 0x00, sizeof(UartLineCoding));
+
+    bResult = GetUartLineCoding(hInterface, Interface, &UartLineCoding);
+    if (bResult)
+    {
+        printf("\nGet UART Line Coding OK");
+    }
+
+    PrintUartLineCoding(UartLineCoding);
+
+    if(Interface == SIU_INTERFACE_0)
+    {
+        if (!WinUsb_GetAssociatedInterface(hInterface, 0, &hDataInterface)) return;
+    }
+    if(Interface == SIU_INTERFACE_1)
+    {
+        if (!WinUsb_GetAssociatedInterface(hInterface, 0, &hDataInterface)) return;
+    }
+
+    bResult = WinUsb_QueryPipe(hDataInterface, 0, 1, &pipeO);
+    bResult &= WinUsb_QueryPipe(hDataInterface, 0, 0, &pipeI);
+#if 0    
+    printf("\nEnter data to write: \n");
+    scanf_s("%u", &(data));
+    uint8_t FromUART[1]
+#endif
+    while (true)
+    {
+        bResult = WinUsb_ReadPipe(hDataInterface, pipeO.PipeId, FromUART, 1, &cbSent, 0);
+        
+    }
+}
 int _tmain(int argc, _TCHAR* argv[])
 {
     DEVICE_DATA mydd;
@@ -1088,10 +1258,10 @@ int _tmain(int argc, _TCHAR* argv[])
     if (bError) {
         return -2;
     }
-    //Test_UART(mydd.WinusbHandle,24000000,0 , 1, 8, 131);
-    //Demo_GPIO(mydd.WinusbHandle);
-    test_SPI(mydd.WinusbHandle);
-    //Demo_SPI(mydd.WinusbHandle);
+    //Write_UART(mydd.WinusbHandle,24000000,0 , 1, 8, 131);
+    //Write_GPIO(mydd.WinusbHandle);
+    Write_SPI(mydd.WinusbHandle);
+    //Write_SPI(mydd.WinusbHandle);
     CloseDevice(&mydd);
     return 0;
 }
